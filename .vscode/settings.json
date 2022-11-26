@@ -1,4 +1,4 @@
 {
-	"python.formatting.provider": "autopep8",
-	"python.analysis.typeCheckingMode": "off"
+  "python.formatting.provider": "black",
+  "python.analysis.typeCheckingMode": "off"
 }
