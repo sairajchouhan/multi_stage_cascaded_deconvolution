@@ -25,8 +25,6 @@ train_dataset = NYUv2Dataset(
 test_dataset = NYUv2Dataset(
     train=False,
 )
-print("test dataset is =====================================", len(train_dataset))
-print("test dataset is =====================================", len(test_dataset))
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset, batch_size=batch_size, shuffle=True
@@ -40,6 +38,8 @@ test_loader = torch.utils.data.DataLoader(
 class Bottleneck(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding):
         super().__init__()
+        self.bnorm = nn.BatchNorm2d(in_channels)
+        self.relu = nn.ReLU(inplace=True)
         self.conv = nn.Conv2d(
             in_channels=in_channels,
             out_channels=out_channels,
@@ -47,10 +47,6 @@ class Bottleneck(nn.Module):
             stride=stride,
             padding=padding,
         )
-        self.bnorm = nn.BatchNorm2d(
-            in_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True
-        )
-        self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
         x = self.bnorm(x)
@@ -62,9 +58,7 @@ class Bottleneck(nn.Module):
 class DeConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding):
         super().__init__()
-        self.bnorm = nn.BatchNorm2d(
-            in_channels, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True
-        )
+        self.bnorm = nn.BatchNorm2d(in_channels)
         self.relu = nn.ReLU(inplace=True)
         self.deconv = nn.ConvTranspose2d(
             in_channels=in_channels,
@@ -88,44 +82,63 @@ class Main(nn.Module):
         self.densenet161 = nn.Sequential(*list(DenseNet161.children())[:-1])
         # first bottleneck layer
         self.btl1 = Bottleneck(
-            in_channels=2208, out_channels=512, kernel_size=1, stride=1, padding=1
+            in_channels=2208, out_channels=512, kernel_size=1, stride=1, padding=0
         )
 
         # 1st deconvolution layer
         self.deconv1 = DeConv(
-            in_channels=512, out_channels=512, kernel_size=5, stride=2, padding=2
+            in_channels=512, out_channels=512, kernel_size=5, stride=2, padding=1
         )
         self.avgpool1 = nn.AvgPool2d(kernel_size=(1, 2), stride=1, padding=0)
 
         # 2nd deconvolution layer
         self.deconv2 = DeConv(
-            in_channels=512, out_channels=256, kernel_size=5, stride=2, padding=2
+            in_channels=512, out_channels=256, kernel_size=5, stride=2, padding=1
         )
         self.avgpool2 = nn.AvgPool2d(kernel_size=(2, 2), stride=1, padding=0)
 
         # 3rd deconvolution layer
         self.deconv3 = DeConv(
-            in_channels=256, out_channels=128, kernel_size=5, stride=2, padding=2
+            in_channels=256, out_channels=128, kernel_size=5, stride=2, padding=1
         )
         self.avgpool3 = nn.AvgPool2d(kernel_size=(2, 2), stride=1, padding=0)
 
         # 4th deconvolution layer
         self.deconv4 = DeConv(
-            in_channels=128, out_channels=128, kernel_size=5, stride=2, padding=2
+            in_channels=128, out_channels=1, kernel_size=5, stride=2, padding=1
         )
         self.avgpool4 = nn.AvgPool2d(kernel_size=(2, 2), stride=1, padding=0)
 
     def forward(self, x):
         x = self.densenet161(x)
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after densenet161", x.size())
+
         x = self.btl1(x)
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after btl1", x.size())
+
         x = self.deconv1(x)
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after deconv1", x.size())
+
         x = self.avgpool1(x)
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after avgpool1", x.size())
+
         x = self.deconv2(x)
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after deconv2", x.size())
+
         x = self.avgpool2(x)
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after avgpool2", x.size())
+
         x = self.deconv3(x)
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after deconv3", x.size())
+
         x = self.avgpool3(x)
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after avgpool3", x.size())
+
         x = self.deconv4(x)
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after deconv4", x.size())
+
         x = self.avgpool4(x)
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after avgpool4", x.size())
 
         return x
 
@@ -154,7 +167,6 @@ def train(dataloader, model, loss_fn, optimizer):
 
         # convert to 3d tensor
         loss = loss_fn(pred, y)
-        print()
 
         # Backpropagation
         optimizer.zero_grad()
@@ -166,11 +178,9 @@ def train(dataloader, model, loss_fn, optimizer):
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 
-for param in model.parameters():
-    print(type(param), param.size())
-
 epochs = 5
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
     train(test_loader, model, loss_fn, optimizer)
+
 print("Done!")
