@@ -6,14 +6,14 @@ DenseNet161 = torch.hub.load("pytorch/vision:v0.10.0", "densenet161", pretrained
 
 batch_size = 12
 
-# device = (
-#     torch.device("mps")
-#     if (torch.backends.mps.is_available() and torch.backends.mps.is_built())
-#     else torch.device("cpu")
-# )
+device = (
+    torch.device("mps")
+    if (torch.backends.mps.is_available() and torch.backends.mps.is_built())
+    else torch.device("cpu")
+)
 
 
-device = torch.device("cpu")
+# device = torch.device("cpu")
 
 
 print("Using device:", device.type.upper())
@@ -145,13 +145,6 @@ class Main(nn.Module):
 
 model = Main().to(device)
 
-# print(model.densenet161.features.denseblock4.denselayer24.conv2.weight.size())
-# print(model)
-# for name, param in model.named_parameters():
-#     print(name, param.size())
-# print(model.densenet161.features.norm5.weight.size())
-
-
 loss_fn = nn.MSELoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, momentum=0.9)
 
@@ -179,8 +172,9 @@ def train(dataloader, model, loss_fn, optimizer):
 
 
 epochs = 5
+
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
-    train(test_loader, model, loss_fn, optimizer)
+    train(train_loader, model, loss_fn, optimizer)
 
 print("Done!")
