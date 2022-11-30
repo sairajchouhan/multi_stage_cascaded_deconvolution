@@ -48,10 +48,11 @@ class NYUv2Dataset(data.Dataset):
         return self.length
 
 
-# if __name__ == "__main__":
-#     # Testing
-#     dataset = NYUv2Dataset()
-#     print(len(dataset))
-#     print(dataset[0])
-#     for item in dataset[0]:
-#         print(item.size())
+if __name__ == "__main__":
+    # Testing
+    for i in range(0, 10):
+        if i > 4:
+            continue
+        print("for ", i)
+    else:
+        print("else block")

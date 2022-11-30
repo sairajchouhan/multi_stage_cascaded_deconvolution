@@ -1,10 +1,15 @@
 import torch
 from torch import nn
 from nyu_v2_dataset import NYUv2Dataset
+import os
+
+
+debug = bool(os.getenv("DEBUG", default=False))
+
 
 DenseNet161 = torch.hub.load("pytorch/vision:v0.10.0", "densenet161", pretrained=True)
 
-batch_size = 12
+batch_size = 10
 
 device = (
     torch.device("mps")
@@ -32,6 +37,9 @@ train_loader = torch.utils.data.DataLoader(
 test_loader = torch.utils.data.DataLoader(
     test_dataset, batch_size=batch_size, shuffle=True
 )
+
+print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", next(iter(train_loader)))
+print("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", next(iter(train_loader)))
 
 
 # make a nice class for bottleneck layer
@@ -111,34 +119,34 @@ class Main(nn.Module):
 
     def forward(self, x):
         x = self.densenet161(x)
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after densenet161", x.size())
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after densenet161", x.size())
 
         x = self.btl1(x)
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after btl1", x.size())
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after btl1", x.size())
 
         x = self.deconv1(x)
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after deconv1", x.size())
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after deconv1", x.size())
 
         x = self.avgpool1(x)
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after avgpool1", x.size())
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after avgpool1", x.size())
 
         x = self.deconv2(x)
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after deconv2", x.size())
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after deconv2", x.size())
 
         x = self.avgpool2(x)
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after avgpool2", x.size())
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after avgpool2", x.size())
 
         x = self.deconv3(x)
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after deconv3", x.size())
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after deconv3", x.size())
 
         x = self.avgpool3(x)
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after avgpool3", x.size())
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after avgpool3", x.size())
 
         x = self.deconv4(x)
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after deconv4", x.size())
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after deconv4", x.size())
 
         x = self.avgpool4(x)
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after avgpool4", x.size())
+        # print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ after avgpool4", x.size())
 
         return x
 
@@ -157,6 +165,16 @@ def train(dataloader, model, loss_fn, optimizer):
 
         # Compute prediction error
         pred = model(X)
+        if debug:
+            print(
+                "-------------------------------TRAIN------------------------------------"
+            )
+            print("X ", X.size())
+            print("y ", y.size())
+            print("pred ", pred.size())
+            print(
+                "-------------------------------TRAIN END------------------------------------"
+            )
 
         # convert to 3d tensor
         loss = loss_fn(pred, y)
@@ -173,8 +191,36 @@ def train(dataloader, model, loss_fn, optimizer):
 
 epochs = 5
 
-for t in range(epochs):
-    print(f"Epoch {t+1}\n-------------------------------")
-    train(train_loader, model, loss_fn, optimizer)
+
+def test(dataloader, model, loss_fn):
+    model.eval()
+    size = len(dataloader.dataset)
+    num_batches = len(dataloader)
+    test_loss, correct = 0, 0
+
+    with torch.no_grad():
+        for X, y in dataloader:
+            X, y = X.to(device), y.to(device)
+            pred = model(X)
+            if debug:
+                print(
+                    "\n-------------------------------TEST------------------------------------"
+                )
+                print("X ", X.size())
+                print("y ", y.size())
+                print("pred ", pred.size())
+                print(
+                    "-------------------------------TEST END------------------------------------\n"
+                )
+            test_loss += loss_fn(pred, y).item()
+
+    test_loss /= num_batches
+    print(f"Test set: Avg loss: {test_loss:>8f} \n")
+
+
+# for t in range(epochs):
+#     print(f"Epoch {t+1}\n-------------------------------")
+#     train(train_loader, model, loss_fn, optimizer)
+#     test(test_loader, model, loss_fn)
 
 print("Done!")
